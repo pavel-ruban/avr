@@ -1,108 +1,163 @@
-.equ PORTB, 0x05
-.equ DDRB, 0x04
-.equ PORTC, 0x08
-.equ DDRC, 0x07
-.equ PINC, 0x06
-.equ PIND, 0x09
-.equ PORTD, 0x0b
-.equ DDRD, 0x0a
-.equ RAMEND, 0x02FF
-.equ spl, 0x3d
-.equ sph, 0x3e
+; ----------------------------------------------------------------------------------------------------------
+; 						Includes files
+; ----------------------------------------------------------------------------------------------------------
+; Имена регистров и портов ввода\вывода
+.include	"include/m48PAdef.inc"
+; ----------------------------------------------------------------------------------------------------------
+; 						Макросы
+; ----------------------------------------------------------------------------------------------------------
 
-.text			; Кодовый сегмент
+.macro	pushf
+					push	r16				; сохранить флаговый регистр на стек
+					in	r16,	SREG
+					push	r16
+.endm
 
-reset:
-	rjmp main	;1 0x000 RESET External Pin, Power-on Reset, Brown-out Reset and Watchdog System Reset
-	reti		;2 0x001 INT0 External Interrupt Request 0
-	reti		;3 0x002 INT1 External Interrupt Request 1
-	reti		;4 0x003 PCINT0 Pin Change Interrupt Request 0
-	reti		;5 0x004 PCINT1 Pin Change Interrupt Request 1
-	reti		;6 0x005 PCINT2 Pin Change Interrupt Request 2
-	reti		;7 0x006 WDT Watchdog Time-out Interrupt
-	reti		;8 0x007 TIMER2 COMPA Timer/Counter2 Compare Match A
-	reti		;9 0x008 TIMER2 COMPB Timer/Counter2 Compare Match B
-	reti		;10 0x009 TIMER2 OVF Timer/Counter2 Overflow
-	reti		;11 0x00A TIMER1 CAPT Timer/Counter1 Capture Event
-	reti		;12 0x00B TIMER1 COMPA Timer/Counter1 Compare Match A
-	reti		;13 0x00C TIMER1 COMPB Timer/Coutner1 Compare Match B
-	reti		;14 0x00D TIMER1 OVF Timer/Counter1 Overflow
-	reti		;15 0x00E TIMER0 COMPA Timer/Counter0 Compare Match A
-	reti		;16 0x00F TIMER0 COMPB Timer/Counter0 Compare Match B
-	reti		;17 0x010 TIMER0 OVF Timer/Counter0 Overflow
-	reti		;18 0x011 SPI, STC SPI Serial Transfer Complete
-	reti		;19 0x012 USART, RX USART Rx Complete
-	reti		;20 0x013 USART, UDRE USART, Data Register Empty
-	reti		;21 0x014 USART, TX USART, Tx Complete
-	reti		;22 0x015 ADC ADC Conversion Complete
-	reti		;23 0x016 EE READY EEPROM Ready
+.macro outi	port	const							; вывести в порт константу
+					ldi	R16,	\const
+			.if \port < 0x40
+					out	\port,	R16
+			.else
+					sts	\port,	R16
+			.endif
+.endm
 
-main:
-	cli			; отключаем прерывания глобально
+.macro	popf									; восстановить флаги со стека
+					pop	r16
+					out	SREG,	r16
+					pop	r16
+.endm
 
-	ldi r16, lo8(RAMEND)	; инициализация стека
-	out spl, r16
-	ldi r16, hi8(RAMEND)
-	out sph, r16
+.macro	invb	register	shift						; инвертирует заданный бит регистра
+					ldi	r16,		(1 << \shift)
+			.if \register < 0x40
+					in	r17,		\register
+					eor	r17,		r16
+					out	\register,	r17
+			.else
+					lds	r17,		\register
+					eor	r17,		r16
+					sts	\register,	r17
+			.endif
+.endm
 
-	; =========================================== ;
-	; Initialize ports settings & set their data. ;
-	; =========================================== ;
-	sbi DDRC, 1		; Initialize port's pin as output
-	sbi DDRB, 1;
-	cbi DDRC, 0		; Initialize port's pin as output
-	cbi DDRD, 4;
+.macro	incm	counter								; инкремент 4х байтного числа в памяти
+					lds	r16,	\counter
+					lds	r17,	\counter + 1
+					lds	r18,	\counter + 2
+					lds	r19,	\counter + 3
 
-led_blink:
-	sbi PORTC, 1;
+					subi	r16,	(-1)
+					sbci	r17,	(-1)
+					sbci	r18,	(-1)
+					sbci	r19,	(-1)
 
-	rcall delay
+					sts	\counter,	r16
+					sts	\counter + 1,	r17
+					sts	\counter + 2,	r18
+					sts	\counter + 3,	r19
+.endm
 
-	cbi PORTC, 1;
+; ----------------------------------------------------------------------------------------------------------
+; 					Данные оперативной памяти
+; ----------------------------------------------------------------------------------------------------------
+.data
+; Используется для счетчика событий переполнения таймера
+.org SRAM_START
+tcounter:				.byte	4
 
-	rcall delay
+.text
+; 0x00 Адрес начала работы контроллера
+; Таблица векторов прерываний ------------------------------------------------------------------------------
+.org 0x00
+reset:					rjmp	main			;1 0x000 RESET External Pin, Power-on Reset, Brown-out Reset and Watchdog System Reset
+					reti				;2 0x001 INT0 External Interrupt Request 0
+					reti				;3 0x002 INT1 External Interrupt Request 1
+					reti				;4 0x003 PCINT0 Pin Change Interrupt Request 0
+					reti				;5 0x004 PCINT1 Pin Change Interrupt Request 1
+					reti				;6 0x005 PCINT2 Pin Change Interrupt Request 2
+					reti				;7 0x006 WDT Watchdog Time-out Interrupt
+					reti				;8 0x007 TIMER2 COMPA Timer/Counter2 Compare Match A
+					reti				;9 0x008 TIMER2 COMPB Timer/Counter2 Compare Match B
+					reti				;10 0x009 TIMER2 OVF Timer/Counter2 Overflow
+					reti				;11 0x00A TIMER1 CAPT Timer/Counter1 Capture Event
+					reti				;12 0x00B TIMER1 COMPA Timer/Counter1 Compare Match A
+					reti				;13 0x00C TIMER1 COMPB Timer/Counter1 Compare Match B
+					reti				;14 0x00D TIMER1 OVF Timer/Counter1 Overflow
+					reti				;15 0x00E TIMER0 COMPA Timer/Counter0 Compare Match A
+					reti				;16 0x00F TIMER0 COMPB Timer/Counter0 Compare Match B
+					rjmp	Timer0_Overflow		;17 0x010 TIMER0 OVF Timer/Counter0 Overflow
+					reti				;18 0x011 SPI, STC SPI Serial Transfer Complete
+					reti				;19 0x012 USART, RX USART Rx Complete
+					reti				;20 0x013 USART, UDRE USART, Data Register Empty
+					reti				;21 0x014 USART, TX USART, Tx Complete
+					reti				;22 0x015 ADC ADC Conversion Complete
+					reti				;23 0x016 EE READY EEPROM Ready
 
-	;rjmp led_blink
 
-poll:
-	sbis PINC, 0
-	rjmp turn_off_led
-	rjmp light_led
+; Обработчики прерываний -----------------------------------------------------------------------------------
 
-poll_second:
-	sbis PIND, 4
-	rjmp turn_off_led_b
-	rjmp light_led_b
+Timer0_Overflow:			pushf
+					push	r17
+					push	r18
+					push	r19
 
+					incm	tcounter
 
-end:
-	rjmp poll;
+					pop	r19
+					pop	r18
+					pop	r17
+					popf
+					reti
 
-light_led_b:
-	sbi PORTB, 2		; Light led
-	rjmp poll;
+; Начало программы -----------------------------------------------------------------------------------------
+; Инициализация локальной перифeрии ------------------------------------------------------------------------
 
-turn_off_led_b:
-	cbi PORTB, 2		; Light led
-	rjmp poll;
+main:					; Initialize ports settings & set their data
+					sbi	DDRC,	1		; Initialize port's pin as output
+					sbi	DDRB,	1
+					sbi	DDRB,	2
+					cbi	DDRC,	0		; Initialize port's pin as input
+					cbi	DDRD,	4
 
-light_led:
-	sbi PORTB, 1		; Light led
-	rjmp poll_second;
+					lds	r17,	TIMSK0		; Включим прерывания переполнения таймера 0
+					ori	r17,	1
+					sts	TIMSK0, r17
 
-turn_off_led:
-	cbi PORTB, 1		; Light led
-	rjmp poll_second;
+					outi	TCCR0B,	1 << CS00	; Запускаем таймер. Предделитель = 1
+									; Т.е. тикаем с тактовой частотой.
 
-delay:
-	ldi r17, 0xff
-	ldi r18, 0xff
-	ldi r19, 0x7a
+					ldi	r16,	lo8(RAMEND)	; инициализация стека
+					out	SPL,	r16
+					ldi	r16,	hi8(RAMEND)
+					out	SPH,	r16
 
-iterate:
-	subi r17, 1
-	sbci r18, 0
-	sbci r19, 0
-	brcc iterate
-	ret
+					sei				; Разрешаем глобальные прерывания
+
+; ----------------------------------------------------------------------------------------------------------
+
+; Проверяем прошел ли заданный интервал времени ------------------------------------------------------------
+loop:					lds	r16,	tcounter
+					cpi	r16,	0x12
+					brcs	idle
+					lds	r16,	tcounter + 1
+					cpi	r16,	0x7a
+					brcs	idle
+
+; Если прошел выполняем обработчик события иначе выше переходим на холостую итерацию -----------------------
+handle:					invb	PORTC,		1	; Инвертируем светодиод
+					cli				; Отключаем прерывания
+					clr	r16
+					sts	tcounter,	r16	; Обнуляем счетчик в ОЗУ
+					sts	tcounter + 1,	r16
+					sts	TCNT0,		r16	; Обнуляем счетчик таймера
+					sei				; Включаем прерывания
+					rjmp	loop
+
+; Холостые итерации - обрабатываем полезную нагрузки пока событие таймера не наступило ---------------------
+idle:					sbis	PIND,	4
+					cbi	PORTB,	1
+					sbic	PIND,	4
+					sbi	PORTB,	1
+					rjmp	loop
 
