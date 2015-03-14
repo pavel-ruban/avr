@@ -6,9 +6,9 @@ MMCU = atmega48pa
 
 # Translate & link binary file
 link: assemble
-	avr-ld avr.o -o avr.bin
+	avr-ld avr.o -T ld.cls -o avr.bin
 assemble: avr.s
-	avr-as -m $(MMCU) -g avr.s -o avr.o
+	avr-as -m $(MMCU) -g3 avr.s -o avr.o
 
 # Run avr emulator with gdb server on 1234 port
 sim: link
@@ -16,7 +16,7 @@ sim: link
 
 # Connect gdb to simulator for runtime debuggin
 gdb: link
-	avr-gdb --symbols=/sources/avr/avr.o --ex='layout regs' --ex='target remote terminal:1234'
+	avr-gdb --symbols=/sources/avr/avr.bin --ex='layout regs' --ex='target remote terminal:1234'
 
 # Update microcontroller firmware
 flash : link

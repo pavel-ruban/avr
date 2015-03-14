@@ -7,18 +7,18 @@
 ; 						Макросы
 ; ----------------------------------------------------------------------------------------------------------
 
-.macro	pushf
-					push	r16				; сохранить флаговый регистр на стек
+.macro	pushf									; сохранить флаговый регистр на стек
+					push	r16
 					in	r16,	SREG
 					push	r16
 .endm
 
-.macro outi	port	const							; вывести в порт константу
-					ldi	R16,	\const
-			.if \port < 0x40
-					out	\port,	R16
+.macro	outi	r	v							; вывести в порт константу
+					ldi	R16,	\v
+			.if \r < 0x40
+					out	\r,	R16
 			.else
-					sts	\port,	R16
+					sts	\r,	R16
 			.endif
 .endm
 
@@ -28,34 +28,51 @@
 					pop	r16
 .endm
 
-.macro	invb	register	shift						; инвертирует заданный бит регистра
-					ldi	r16,		(1 << \shift)
-			.if \register < 0x40
-					in	r17,		\register
-					eor	r17,		r16
-					out	\register,	r17
+.macro	invb	r	b							; инвертирует заданный бит регистра
+					ldi	r16,	(1 << \b)
+			.if \r < 0x40
+					in	r17,	\r
+					eor	r17,	r16
+					out	\r,	r17
 			.else
-					lds	r17,		\register
-					eor	r17,		r16
-					sts	\register,	r17
+					lds	r17,	\r
+					eor	r17,	r16
+					sts	\r,	r17
 			.endif
 .endm
 
-.macro	incm	counter								; инкремент 4х байтного числа в памяти
-					lds	r16,	\counter
-					lds	r17,	\counter + 1
-					lds	r18,	\counter + 2
-					lds	r19,	\counter + 3
+.macro	incm	ctn								; инкремент 4х байтного числа в памяти
+					lds	r16,		\ctn
+					lds	r17,		\ctn + 1
+					lds	r18,		\ctn + 2
+					lds	r19,		\ctn + 3
 
-					subi	r16,	(-1)
-					sbci	r17,	(-1)
-					sbci	r18,	(-1)
-					sbci	r19,	(-1)
+					subi	r16,		(-1)		; -1 = 0b11111111, поэтому при вычитании из любого числа регистра кроме 0xFF
+					sbci	r17,		(-1)		; всегда будет перенос бита и флаг C в SREG, команда sbci - subtract immediate
+					sbci	r18,		(-1)		; with carry - вычитает константу из буфера и бит C (переноса), поскольку почти
+					sbci	r19,		(-1)		; всегда перенос = 1 то r17 - 1 + 1 = r17
 
-					sts	\counter,	r16
-					sts	\counter + 1,	r17
-					sts	\counter + 2,	r18
-					sts	\counter + 3,	r19
+					sts	\ctn,		r16
+					sts	\ctn + 1,	r17
+					sts	\ctn + 2,	r18
+					sts	\ctn + 3,	r19
+.endm
+
+.macro	setbi	r	b	tr=r16						; установить бит в регистре I/O используя оптимальные оп коды в зависимости от регистра
+			.if	\r <= 0x20
+					sbi	\r,	\b
+			.else
+				.if	\r <= 0x40				; 0x40 = 64 адреса, т.к. опкод содержит 5 бит для адресации IO все что выше
+										; обрабатывается опкодами общей адресации памяти lds / sts
+					in	\tr,	\r
+					sbr	\tr,	1 << \b
+					out	\r,	\tr
+				.else						; здесь расширенные регистры ввода / вывода которые не уместились в размер операнда
+					lds	\tr,	\r			; in / out, поэтому вместо размера 2 байта эти порты обрабатываются опкодами в 4
+					sbr	\tr,	1 << \b			; байта из стандартной адресации RAM
+					sts	\r,	\tr
+				.endif
+			.endif
 .endm
 
 ; ----------------------------------------------------------------------------------------------------------
@@ -63,13 +80,13 @@
 ; ----------------------------------------------------------------------------------------------------------
 .data
 ; Используется для счетчика событий переполнения таймера
-.org SRAM_START
-tcounter:				.byte	4
+.org	SRAM_START
+TCNT:					.byte	4
 
 .text
 ; 0x00 Адрес начала работы контроллера
 ; Таблица векторов прерываний ------------------------------------------------------------------------------
-.org 0x00
+.org	0x00
 reset:					rjmp	main			;1 0x000 RESET External Pin, Power-on Reset, Brown-out Reset and Watchdog System Reset
 					reti				;2 0x001 INT0 External Interrupt Request 0
 					reti				;3 0x002 INT1 External Interrupt Request 1
@@ -86,7 +103,7 @@ reset:					rjmp	main			;1 0x000 RESET External Pin, Power-on Reset, Brown-out Re
 					reti				;14 0x00D TIMER1 OVF Timer/Counter1 Overflow
 					reti				;15 0x00E TIMER0 COMPA Timer/Counter0 Compare Match A
 					reti				;16 0x00F TIMER0 COMPB Timer/Counter0 Compare Match B
-					rjmp	Timer0_Overflow		;17 0x010 TIMER0 OVF Timer/Counter0 Overflow
+					rjmp	TIMER0_OVF		;17 0x010 TIMER0 OVF Timer/Counter0 Overflow
 					reti				;18 0x011 SPI, STC SPI Serial Transfer Complete
 					reti				;19 0x012 USART, RX USART Rx Complete
 					reti				;20 0x013 USART, UDRE USART, Data Register Empty
@@ -97,12 +114,12 @@ reset:					rjmp	main			;1 0x000 RESET External Pin, Power-on Reset, Brown-out Re
 
 ; Обработчики прерываний -----------------------------------------------------------------------------------
 
-Timer0_Overflow:			pushf
+TIMER0_OVF:				pushf
 					push	r17
 					push	r18
 					push	r19
 
-					incm	tcounter
+					incm	TCNT
 
 					pop	r19
 					pop	r18
@@ -114,15 +131,12 @@ Timer0_Overflow:			pushf
 ; Инициализация локальной перифeрии ------------------------------------------------------------------------
 
 main:					; Initialize ports settings & set their data
-					sbi	DDRC,	1		; Initialize port's pin as output
 					sbi	DDRB,	1
 					sbi	DDRB,	2
 					cbi	DDRC,	0		; Initialize port's pin as input
 					cbi	DDRD,	4
 
-					lds	r17,	TIMSK0		; Включим прерывания переполнения таймера 0
-					ori	r17,	1
-					sts	TIMSK0, r17
+					setbi	TIMSK0, TOIE0		; Включим прерывания переполнения таймера 0
 
 					outi	TCCR0B,	1 << CS00	; Запускаем таймер. Предделитель = 1
 									; Т.е. тикаем с тактовой частотой.
@@ -137,10 +151,10 @@ main:					; Initialize ports settings & set their data
 ; ----------------------------------------------------------------------------------------------------------
 
 ; Проверяем прошел ли заданный интервал времени ------------------------------------------------------------
-loop:					lds	r16,	tcounter
+loop:					lds	r16,	TCNT
 					cpi	r16,	0x12
 					brcs	idle
-					lds	r16,	tcounter + 1
+					lds	r16,	TCNT + 1
 					cpi	r16,	0x7a
 					brcs	idle
 
@@ -148,8 +162,8 @@ loop:					lds	r16,	tcounter
 handle:					invb	PORTC,		1	; Инвертируем светодиод
 					cli				; Отключаем прерывания
 					clr	r16
-					sts	tcounter,	r16	; Обнуляем счетчик в ОЗУ
-					sts	tcounter + 1,	r16
+					sts	TCNT,		r16	; Обнуляем счетчик в ОЗУ
+					sts	TCNT + 1,	r16
 					sts	TCNT0,		r16	; Обнуляем счетчик таймера
 					sei				; Включаем прерывания
 					rjmp	loop
