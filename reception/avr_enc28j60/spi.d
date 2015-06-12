@@ -1,0 +1,1 @@
+spi.o: spi.c
