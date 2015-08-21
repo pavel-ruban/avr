@@ -1,0 +1,153 @@
+
+Allocating common symbols
+Common symbol       size              file
+
+ip_mask             0x4               lan.o
+mac_addr            0x6               lan.o
+term_var_info_array
+                    0x14              main.o
+ip_addr             0x4               lan.o
+net_buf             0xc4              lan.o
+ip_gateway          0x4               lan.o
+byte                0x1               main.o
+term_var_info       0x2               main.o
+delta               0x2               main.o
+str                 0x10              main.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD avr.o
+LOAD main.o
+LOAD mfrc522.o
+LOAD lan.o
+LOAD enc28j60.o
+LOAD spi.o
+                0x0000000000000000                . = 0x0
+
+.text           0x0000000000000000      0xf3a
+ *(.text)
+ .text          0x0000000000000000      0x2d4 avr.o
+                0x00000000000002b8                clear_tcn
+                0x00000000000002c6                OP_OPEN
+ .text          0x00000000000002d4      0x182 main.o
+                0x00000000000002d4                initial_delay
+                0x00000000000002e8                main_init
+                0x0000000000000376                end_signal
+                0x0000000000000378                deny_signal
+                0x0000000000000386                ok_signal
+                0x000000000000038e                open_door
+                0x00000000000003a6                udp_packet
+                0x0000000000000444                close_door
+                0x0000000000000446                open_door_script
+                0x000000000000044a                close_door_script
+                0x000000000000044c                rfid
+ .text          0x0000000000000456      0x3e0 mfrc522.o
+                0x0000000000000456                mfrc522_write
+                0x000000000000046c                mfrc522_read
+                0x000000000000047e                mfrc522_reset
+                0x0000000000000486                mfrc522_set_transieve_mode
+                0x00000000000004b2                mfrc522_init
+                0x00000000000004f4                mfrc522_to_card
+                0x0000000000000766                mfrc522_request
+                0x00000000000007ca                mfrc522_get_card_serial
+ .text          0x0000000000000836      0x31a lan.o
+                0x0000000000000836                udp_filter
+                0x0000000000000850                ip_cksum
+                0x00000000000008f0                eth_reply
+                0x000000000000091c                ip_reply
+                0x0000000000000992                udp_reply
+                0x00000000000009e8                icmp_filter
+                0x0000000000000a08                ip_filter
+                0x0000000000000a5c                arp_filter
+                0x0000000000000b0c                eth_filter
+                0x0000000000000b2e                lan_init
+                0x0000000000000b36                lan_poll
+ .text          0x0000000000000b50      0x3c2 enc28j60.o
+                0x0000000000000b50                enc28j60_read_op
+                0x0000000000000b70                enc28j60_write_op
+                0x0000000000000b86                enc28j60_soft_reset
+                0x0000000000000ba0                enc28j60_set_bank
+                0x0000000000000bd8                enc28j60_rcr
+                0x0000000000000be8                enc28j60_rcr16
+                0x0000000000000c10                enc28j60_wcr
+                0x0000000000000c28                enc28j60_wcr16
+                0x0000000000000c50                enc28j60_bfc
+                0x0000000000000c68                enc28j60_bfs
+                0x0000000000000c80                enc28j60_read_buffer
+                0x0000000000000cbe                enc28j60_write_buffer
+                0x0000000000000cfa                enc28j60_read_phy
+                0x0000000000000d1a                enc28j60_write_phy
+                0x0000000000000d3a                enc28j60_init
+                0x0000000000000e02                enc28j60_send_packet
+                0x0000000000000e64                enc28j60_recv_packet
+ .text          0x0000000000000f12       0x28 spi.o
+                0x0000000000000f12                spi_init
+                0x0000000000000f2e                spi_transmit
+
+.rodata         0x0000000000000f3a        0x2
+ .rodata        0x0000000000000f3a        0x2 enc28j60.o
+
+.trampolines    0x0000000000000f3c        0x0
+ .trampolines   0x0000000000000f3c        0x0 linker stubs
+                0x0000000000800000                . = 0x800000
+
+.data           0x0000000000800000        0x0
+ *(.data)
+ .data          0x0000000000800000        0x0 avr.o
+ .data          0x0000000000800000        0x0 main.o
+ .data          0x0000000000800000        0x0 mfrc522.o
+ .data          0x0000000000800000        0x0 lan.o
+ .data          0x0000000000800000        0x0 enc28j60.o
+ .data          0x0000000000800000        0x0 spi.o
+
+.bss            0x0000000000800000      0x220
+ *(.bss)
+ .bss           0x0000000000800000      0x11e avr.o
+                0x0000000000800102                CTCNT2
+                0x0000000000800104                CTCNT3
+                0x0000000000800106                CTCNT4
+                0x0000000000800108                CTCNT5
+                0x000000000080010a                CTCNT6
+                0x000000000080010c                CTCNT7
+                0x0000000000800110                DOOR_IS_OPENED
+                0x0000000000800112                OPEN_DOOR
+                0x0000000000800114                OPEN_SIGNAL
+                0x0000000000800116                DENIED_SIGNAL
+                0x0000000000800118                NET_ACTIVITY
+                0x000000000080011a                RFID_ACTIVITY
+ .bss           0x000000000080011e        0x0 main.o
+ .bss           0x000000000080011e        0x0 mfrc522.o
+ .bss           0x000000000080011e        0x0 lan.o
+ .bss           0x000000000080011e        0x3 enc28j60.o
+                0x000000000080011e                enc28j60_rxrdpt
+                0x0000000000800120                enc28j60_current_bank
+ .bss           0x0000000000800121        0x0 spi.o
+ COMMON         0x0000000000800121       0x29 main.o
+                0x0000000000800121                term_var_info_array
+                0x0000000000800135                byte
+                0x0000000000800136                term_var_info
+                0x0000000000800138                delta
+                0x000000000080013a                str
+ COMMON         0x000000000080014a       0xd6 lan.o
+                0x000000000080014a                ip_mask
+                0x000000000080014e                mac_addr
+                0x0000000000800154                ip_addr
+                0x0000000000800158                net_buf
+                0x000000000080021c                ip_gateway
+LOAD /usr/avr/lib/libm.a
+LOAD /usr/avr/lib/libc.a
+OUTPUT(avr.bin elf32-avr)
+LOAD linker stubs
+
+.comment        0x0000000000000000       0x27
+ .comment       0x0000000000000000       0x27 main.o
+                                         0x28 (size before relaxing)
+ .comment       0x0000000000000027       0x28 mfrc522.o
+ .comment       0x0000000000000027       0x28 lan.o
+ .comment       0x0000000000000027       0x28 enc28j60.o
+ .comment       0x0000000000000027       0x28 spi.o
