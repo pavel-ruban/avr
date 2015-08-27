@@ -1,0 +1,23 @@
+BUTTERFLYMP3 TODO LIST
+======================
+$Id: todo.txt,v 1.13 2007/06/02 21:34:17 brokentoaster Exp $
+
+
+Next Release:
+- add directory support
+- serial remote i,j,k,l and spc
+- honour hidden attribute
+
+FILESYSTEM
+- add fat32 support
+- Use 3rd party filesystem?
+
+INTERFACE
+- short and long key presses. fast forward.
+- append play time/ show only play time on display.(modes)
+- serial remote 0-9 for numbered file jump
+- sample mode (each button plays a sample)
+
+MISC
+-MMC/SD bootloader
+-Fade outs
