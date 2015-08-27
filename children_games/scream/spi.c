@@ -5,7 +5,7 @@ void spi_init()
 {
 
 	SPI_DDR |= (1 << SPI_MOSI) | ( 1 << SPI_SCK) | (1 << SD_SPI_CS);
-	
+
 
 	SPI_DDR &= ~(1 << SPI_MISO);
 
@@ -15,7 +15,7 @@ void spi_init()
 
 	SD_SPI_PORT |= (1 << SD_SPI_CS);
 
-	SPCR = (1 << SPE) | (1 << MSTR);// | (1 << SPR0);// | (1 << SPR1);
+	SPCR = (1 << SPE) | (1 << MSTR);// | (1 << SPR0) | (1 << SPR1);
 	//SPSR |= (1<<SPI2X); // Maximum speed
 }
 
@@ -25,20 +25,6 @@ uint8_t spi_transmit(uint8_t data)
 	while(!(SPSR & (1<<SPIF)));
 
 	return SPDR;
-}
-
-uint8_t spi_receive(void)
-{
-	uint8_t	data;
-	// Wait for reception complete
-
-	SPDR = 0xff;
-	while (!(SPSR & (1 << SPIF)));
-	data = SPDR;
-
-	// Return data register
-	return data;
-
 }
 
 #else

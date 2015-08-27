@@ -5,9 +5,9 @@
 include makefile.conf
 
 SRC =	main.c \
-	avr.s 
-	#spi.c \
-	#sd.c
+	avr.s \
+	spi.c \
+	sd.c
 
 CFILES = $(filter %.c, $(SRC))
 SFILES = $(filter %.s, $(SRC))
@@ -55,7 +55,8 @@ $(GDB_SOBJ): %_debug.o: %.s
 
 # Translate & link binary file
 $(TARGET_BINARY): $(COBJD) $(COBJ) $(SOBJ)
-	$(LD) $(SOBJ) $(COBJ) -T ld.cls -o $(TARGET_BINARY) $(LINKFLAGS)
+	#$(LD) $(SOBJ) $(COBJ) -T ld.cls -o $(TARGET_BINARY) $(LINKFLAGS)
+	$(LD) $(SOBJ) $(COBJ) -T ld2.cls $(LINKFLAGS) -o $(TARGET_BINARY)
 
 $(GDB_TARGET_BINARY): $(COBJD) $(GDB_COBJ) $(GDB_SOBJ)
 	$(LD) -g $(GDB_SOBJ) $(GDB_COBJ) -T ld.cls -o $(GDB_TARGET_BINARY) $(LINKFLAGS)
@@ -66,4 +67,4 @@ flash: $(TARGET_BINARY)
 .PHONY:	clean
 
 clean:
-	rm *.{o,d,bin}
+	-rm *.{o,d,bin}
