@@ -6,8 +6,9 @@ include makefile.conf
 
 SRC =	main.c \
 	avr.s \
-	spi.c \
-	sd.c
+	screen.c
+	#spi.c \
+	#sd.c
 
 CFILES = $(filter %.c, $(SRC))
 SFILES = $(filter %.s, $(SRC))

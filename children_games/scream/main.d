@@ -1,1 +1,1 @@
-main.o: main.c spi.h config.h sd.h tools.h
+main.o: main.c config.h tools.h screen.h

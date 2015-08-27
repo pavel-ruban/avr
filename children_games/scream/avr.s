@@ -250,22 +250,6 @@ schd_exit_\@:									;   После того как все работы буд�
 					rcall	game_over_blink
 .endm
 
-.macro	left_game_over_complete_action
-					rcall	left_game_over_complete_script
-.endm
-
-.macro	left_game_over_action
-					rcall	left_game_over_blink
-.endm
-
-.macro	right_game_over_complete_action
-					rcall	right_game_over_complete_script
-.endm
-
-.macro	right_game_over_action
-					rcall	right_game_over_blink
-.endm
-
 .macro	game_start_complete_action
 					rcall	game_start_complete_script
 .endm
@@ -274,80 +258,19 @@ schd_exit_\@:									;   После того как все работы буд�
 					rcall	game_start_blink
 .endm
 
-.macro	game_select_complete_action
-					rcall	game_select_complete_script
-.endm
-
-.macro	game_select_action
-					rcall	game_select_blink
-.endm
-
 .macro	game_idle_action
 					rcall	game_idle_action_script
 .endm
 
 .macro	game_action
+					eor	r1,	r1
+					out	SREG,	r1
+					rcall	game_action_script
+.endm
+
+.macro	game_action_end
 					ldi	r18,		MOD_IDLE
 					sts	context,	r18
-.endm
-
-
-.macro	net_complete_action
-					cbi	LED_WHITE_PORT,	LED_WHITE
-.endm
-
-.macro	rfid_action
-					rcall	rfid
-.endm
-
-.macro	lan_action
- 					rcall	lan_poll
-.endm
-
-.macro	converter_action
-	 				rcall	open_door_script
-.endm
-
-.macro	open_signal_start_action
-					sbi	LED_RFID_PORT,	LED_RFID
-.endm
-
-.macro	open_signal_complete_action
-					cbi	LED_RFID_PORT,	LED_RFID
-.endm
-
-.macro	rfid_start_action
-					sbi	LED_RFID_PORT,	LED_RFID
-.endm
-
-.macro	rfid_complete_action
-					cbi	LED_RFID_PORT,	LED_RFID
-.endm
-
-.macro	denied_signal_start_action
-					sbi	LED_WHITE_PORT,	LED_WHITE
-.endm
-
-.macro	denied_signal_complete_action
-					cbi	LED_WHITE_PORT,	LED_WHITE
-.endm
-
-.macro	open_door_start_action
-					sbi	LED_RFID_PORT,	LED_RFID
-					sbi	LED_GREEN_PORT,	LED_GREEN
-
-					cbi	EMLOCK_MOSFET_PORT,	EMLOCK_MOSFET
-.endm
-
-.macro	open_door_complete_action
-					cbi	LED_RFID_PORT,	LED_RFID
-					cbi	LED_GREEN_PORT,	LED_GREEN
-
-					sbi	EMLOCK_MOSFET_PORT,	EMLOCK_MOSFET
-.endm
-
-.macro	button_action
-	 				rcall	open_door_script
 .endm
 
 .macro	button_trigger	button_port,	button,	action
@@ -416,52 +339,23 @@ schd_exit_\@:									;   После того как все работы буд�
 5:
 .endm
 
-.macro	save_context
-					pushf
-					push	r17
-					push	r18
-					push	r19
-
-					push	r20
-					push	r21
-					push	r22
-					push	r23
-					push	r24
-					push	r25
-					push	r26
-					push	r27
-					push	r28
-					push	r29
-					push	r30
-					push	r31
-.endm
-
-.macro	restore_context
-					pop	r31
-					pop	r30
-					pop	r29
-					pop	r28
-					pop	r27
-					pop	r26
-					pop	r25
-					pop	r24
-					pop	r23
-					pop	r22
-					pop	r21
-					pop	r20
-
-					pop	r19
-					pop	r18
-					pop	r17
-					popf
-.endm
-
 .section .bss ; Сегмент оперативной памяти
 ; Данные оперативной памяти --------------------------------------------------------------------------------
 ; Используется для счетчика событий переполнения таймера
 .org	SRAM_START
 
 CTCNT:					.space	2,	0x00
+CTCNT2:					.space	2,	0x00
+CTCNT3:					.space	3,	0x00
+CTCNT4:					.space	2,	0x00
+CTCNT5:					.space	3,	0x00
+CTCNT6:					.space	3,	0x00
+CTCNT7:					.space	3,	0x00
+
+context:				.byte	0x00
+
+.global context
+.global CTCNT6
 
 ; 0x00 Адрес начала работы контроллера ---------------------------------------------------------------
 .section .vectors
@@ -476,8 +370,10 @@ reset:					rjmp	asm_main		;1 0x000 RESET External Pin, Power-on Reset, Brown-out
 					reti				;7 0x006 WDT Watchdog Time-out Interrupt
 					reti				;8 0x007 TIMER2 COMPA Timer/Counter2 Compare Match A
 					reti				;9 0x008 TIMER2 COMPB Timer/Counter2 Compare Match B
-					reti 				;10 0x009 TIMER2 OVF Timer/Counter2 Overflow
+					rjmp	TIMER2_OVF 		;10 0x009 TIMER2 OVF Timer/Counter2 Overflow
 					rjmp	TIMER1_CPT		;11 0x00A TIMER1 CAPT Timer/Counter1 Capture Event
+					;reti				;10 0x009 TIMER2 OVF Timer/Counter2 Overflow
+					;reti				;11 0x00A TIMER1 CAPT Timer/Counter1 Capture Event
 					reti				;12 0x00B TIMER1 COMPA Timer/Counter1 Compare Match A
 					reti				;13 0x00C TIMER1 COMPB Timer/Counter1 Compare Match B
 					reti				;14 0x00D TIMER1 OVF Timer/Counter1 Overflow
@@ -512,12 +408,122 @@ TIMER1_CPT:				pushf
 					popf
 					reti
 
+TIMER2_OVF:				pushf
+					push	r31
+					push	r30
+
+					push	r29
+					push	r28
+					push	r27
+					push	r26
+					push	r25
+					push	r24
+					push	r23
+					push	r22
+					push	r21
+					push	r20
+					push	r19
+					push	r18
+					push	r17
+
+					push	r15
+					push	r14
+					push	r13
+					push	r12
+					push	r11
+					push	r10
+					push	r9
+					push	r8
+					push	r7
+					push	r6
+					push	r5
+					push	r4
+					push	r3
+					push	r2
+					push	r1
+					push	r0
+
+					eor	r1,	r1
+					out	SREG,	r1
+
+					rcall	screen_render
+
+					pop	r0
+					pop	r1
+					pop	r2
+					pop	r3
+					pop	r4
+					pop	r5
+					pop	r6
+					pop	r7
+					pop	r8
+					pop	r9
+					pop	r10
+					pop	r11
+					pop	r12
+					pop	r13
+					pop	r14
+					pop	r15
+
+					pop	r17
+					pop	r18
+					pop	r19
+
+					pop	r20
+					pop	r21
+					pop	r22
+					pop	r23
+					pop	r24
+					pop	r25
+					pop	r26
+					pop	r27
+					pop	r28
+					pop	r29
+
+					pop	r30
+					pop	r31
+					popf
+					reti
+
 TIMER0_OVF:				pushf
 					push	r17
 					push	r18
 					push	r19
 
 					incm	CTCNT
+					incm	CTCNT2
+
+					lds	r18,	context
+					cpi	r18,	MOD_IDLE
+					brne	0f
+					lincm	CTCNT5
+					rjmp	context_end
+0:
+
+					lds	r18,	context
+					cpi	r18,	MOD_GAME
+					brne	0f
+					incm	CTCNT4
+					rjmp	context_end
+0:
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_START
+					brne	0f
+					lincm	CTCNT3
+					incm	CTCNT4
+					rjmp	context_end
+0:
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_OVER
+					brne	0f
+					lincm	CTCNT7
+					incm	CTCNT4
+					rjmp	context_end
+0:
+
+context_end:
+					lincm	CTCNT6
+
 
 					pop r19
 					pop r18
@@ -532,20 +538,6 @@ uart_init:				ldi 	r16,	lo8(bauddivider)	; Настраиваем бод реж�
 					ldi 	r16, 	hi8(bauddivider)
 					sts 	UBRR0H,	r16
 
-			;		ldi	r16,		lo8(RX_BUFF)	; Инициализируем указатели кольцевых буферов UART'a, чтобы избежать
-			;		sts	RX_BUFF_IN,	r16		; чтения \ записи по прерыванию в неверном месте
-			;		sts	RX_BUFF_OUT,	r16
-			;		ldi	r16,		hi8(RX_BUFF)
-			;		sts	RX_BUFF_IN + 1,		r16	; чтения \ записи по прерыванию в неверном месте
-			;		sts	RX_BUFF_OUT + 1,	r16
-
-			;		ldi	r16,		lo8(TX_BUFF)	; Инициализируем указатели кольцевых буферов UART'a, чтобы избежать
-			;		sts	TX_BUFF_IN,	r16		; чтения \ записи по прерыванию в неверном месте
-			;		sts	TX_BUFF_OUT,	r16
-			;		ldi	r16,		hi8(TX_BUFF)
-			;		sts	TX_BUFF_IN + 1,		r16	; чтения \ записи по прерыванию в неверном месте
-			;		sts	TX_BUFF_OUT + 1,	r16
-
 					ldi 	r16,	0
 					sts 	UCSR0A,	R16
 
@@ -559,21 +551,22 @@ uart_init:				ldi 	r16,	lo8(bauddivider)	; Настраиваем бод реж�
 
 					ret
 
-timer0_init:				setbi	TIMSK0,	TOIE0				; Включим прерывания переполнения таймера 0
+timers_init:				setbi	TIMSK0,	TOIE0				; Включим прерывания переполнения таймера 0
 					outi	TCCR0B,	(1 << CS00) | (1 << CS02)	; Запускаем таймер. Предделитель = 1024
 
-					;setbi	TIMSK2,	TOIE2				; Включим прерывания переполнения таймера 0
-					;outi	TCCR2B,	(1 << CS21); | (1 << CS20); | (1 << CS22)	; Запускаем таймер. Предделитель = 1024
+					setbi	TIMSK2,	TOIE2				; Включим прерывания переполнения таймера 0
+					outi	TCCR2B,	(1 << CS21) | (1 << CS20); | (1 << CS22)	; Запускаем таймер. Предделитель = 1024
 
 		;			setbi	TIMSK1,	ICIE1				; Включим прерывания переполнения таймера 0
 		;			outi	TCCR1A,	0x00				; Отключим пвм от IO, выберем WGM на мод CTC
 		;			outi	TCCR1B,	(1 << WGM13) | (1 << WGM12) | (1 << CS10); | (1 << CS11)	; Запускаем таймер. Предделитель = 64
-					outi	ICR1H,	0x2
-					outi	ICR1L,	0x21				; при  делителе 64 совпадение раз в 100 миллисекунд (10 раз в секунду)
+					;outi	ICR1H,	0x2
+					;outi	ICR1L,	0x21				; при  делителе 64 совпадение раз в 100 миллисекунд (10 раз в секунду)
 
 					ret
 
-pwm_init:				setbi	TCCR0A,	COM0A0
+pwm_init:
+					setbi	TCCR0A,	COM0A0
 					setbi	TCCR0A,	COM0A1
 
 					setbi	TCCR0A,	COM0B0
@@ -600,19 +593,39 @@ memory_clr:				st	Z+,	r16
 
 					ret
 
+adc_init:
+
+					; ADEN: Set to turn on ADC , by default it is turned off
+					; ADPS2: ADPS2 and ADPS0 set to make division factor 32
+					outi	ADCSRA, (1 << ADEN)		;// | (1 << ADPS2) | (1 << ADPS0) | (1 <<  ADPS1);
+					outi	ADMUX,  (1 << REFS1) | (1 << REFS0) | (1 << MUX2) | (1 << MUX1); | (1 << MUX0)
+					; ADC7 selected & intnernal Vcc ref with external capacitor.
+
+					ret
+
 io_ports_init:				sbi	LED_DDR,		LED		; Initialize ports settings & set their data
 
 					sbi	SR_SCREEN_CLK_DDR,	SR_SCREEN_CLK
 					sbi	SR_SCREEN_STROBE_DDR,	SR_SCREEN_STROBE
 					sbi	SR_SCREEN_DATA_DDR,	SR_SCREEN_DATA
 
+					sbi	SCREEN_LEFT_DIGIT_DDR,		SCREEN_LEFT_DIGIT
+					sbi	SCREEN_MIDDLE_DIGIT_DDR,	SCREEN_MIDDLE_DIGIT
+					sbi	SCREEN_RIGHT_DIGIT_DDR,		SCREEN_RIGHT_DIGIT
+
 					sbi	AUDIO_PWM_A_DDR,	AUDIO_PWM_A
 					sbi	AUDIO_PWM_B_DDR,	AUDIO_PWM_B
-					cbi	AUDIO_PWM_A_PORT,	AUDIO_PWM_A
-					cbi	AUDIO_PWM_B_PORT,	AUDIO_PWM_B
+					sbi	AUDIO_PWM_A_PORT,	AUDIO_PWM_A
+					sbi	AUDIO_PWM_B_PORT,	AUDIO_PWM_B
 
 					sbi	TX_PORT,		TX
 					cbi	RX_PORT,		RX
+
+					cbi	START_IN_DDR,		START_IN
+					cbi	START_IN_PORT,		START_IN
+
+					sbi	START_OUT_DDR,		START_OUT
+					cbi	START_OUT_PORT,		START_OUT
 
 					ret
 
@@ -645,19 +658,19 @@ stop_tx_P:
 uart_str_send_cnt: 			; Отправляем в UART строку
 					movw	r30,	r24
 					mov	r19,	r22
-					mov	r17,	r23
+					mov	r16,	r23
 
 start_tx_cnt:				cpi	r19,	0x00		; Если не конец строки отсылаем в uart
 					breq	stop_tx_cnt
 process_tx_cnt:				subi	r19,	1
-					sbci	r17,	0
+					sbci	r16,	0
 					ld	r18,	Z+		; Достанем из флеша константную строку согласно контексту
 
 					rcall	uart_send
 					rjmp	start_tx_cnt
 
 stop_tx_cnt:
-					cpi	r17,	0x00
+					cpi	r16,	0x00
 					brne	process_tx_cnt
 					ret
 
@@ -680,24 +693,23 @@ asm_main:
 ; Инициализация локальной перифeрии ------------------------------------------------------------------------
 					cli
 
-					;rcall	initial_delay
 					ldi	r16,	lo8(RAMEND)	; инициализация стека
 					out	SPL,	r16
 					ldi	r16,	hi8(RAMEND)
                                         out	SPH,	r16
 
 					rcall	memory_init
-					rcall	timer0_init
+					rcall	timers_init
 					rcall	io_ports_init
 					rcall	uart_init
-					rcall	pwm_init
+					rcall	adc_init
+					;rcall	pwm_init
 
 					; GCC uses that registers as zero register - очищаем, иначе если при подаче питания там не будет 0 весь GCC код сломается
 					eor	r1,	r1
 					out	SREG, r1
 
 					rcall	main_init
-
 					sei				; Разрешаем глобальные прерывания
 
 ; Проверяем прошел ли заданный интервал времени ------------------------------------------------------------
@@ -713,20 +725,112 @@ loop:					lds	r16,	CTCNT
 
 ; Холостые итерации - обрабатываем полезную нагрузки пока событие таймера не наступило ---------------------
 0:
-					rcall	script
-					;rcall   adc_update
-					;rcall	audio_routine
+					lds	r16,	CTCNT2
+					cpi	r16,	0x01
+					brcs	idle
+					lds	r16,	CTCNT2 + 1
+					cpi	r16,	0x00
+					brcs	idle
+
+					rcall	event_listener
+
+					rcall	mod_idle_handler
+					rcall	mod_game_start_handler
+					rcall	mod_game_handler
+					rcall	mod_game_over_handler
+
+idle:					rcall	script
 					rjmp	loop
 
+mod_idle_handler:
+					; Blink leds on MOD_GAME_START
+					lds	r18,	context
+					cpi	r18,	MOD_IDLE
+					brne	7f
 
-idle:
-					rjmp	loop
+					ltimer_scheduler	CTCNT5,	0x5c,	0x0,	0x0,	game_idle_action
+7:
+					ret
 
+mod_game_start_handler:
+					; Blink leds on MOD_GAME_START
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_START
+					brne	mod_end
 
+					timer_scheduler	CTCNT4,	0xb,	0x0,	game_start_action
+
+					lds	r16,	CTCNT3
+					cpi	r16,	0x5c
+					brcs	mod_end
+					lds	r16,	CTCNT3 + 1
+					cpi	r16,	0x0
+					brcs	mod_end
+					lds	r16,	CTCNT3 + 2
+					cpi	r16,	0x0
+					brcs	mod_end
+
+					ldi	r18,		MOD_GAME
+					sts	context,	r18
+
+					clr_ltcnt	CTCNT3
+					clr_ltcnt	CTCNT6
+
+					game_start_complete_action
+
+mod_end:
+					ret
+mod_game_handler:
+					; Blink leds on MOD_GAME_START
+					lds	r18,	context
+					cpi	r18,	MOD_GAME
+					brne	7f
+
+					timer_scheduler	CTCNT4,	0x01,	0x00,	game_action
+					ltimer_scheduler	CTCNT6,	0xba,	0xa,	0x0,	game_action_end
+7:
+					ret
+mod_game_over_handler:
+					; Blink leds on MOD_GAME_START
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_OVER
+					brne	game_over_mod_end
+
+					timer_scheduler	CTCNT4,	0x0b,	0x00,	game_over_action
+
+					lds	r16,	CTCNT7
+					cpi	r16,	0x5c
+					brcs	game_over_mod_end
+					lds	r16,	CTCNT7 + 1
+					cpi	r16,	0x0
+					brcs	game_over_mod_end
+					lds	r16,	CTCNT7 + 2
+					cpi	r16,	0x0
+					brcs	game_over_mod_end
+
+					ldi	r18,		MOD_IDLE
+					sts	context,	r18
+
+					clr_ltcnt	CTCNT7
+					clr_ltcnt	CTCNT6
+
+					game_over_complete_action
+
+game_over_mod_end:
+					ret
+
+event_listener:
+					rcall	events_poll
+
+					sts	CTCNT2,		r1	; Обнуляем счетчик в ОЗУ
+					sts	CTCNT2 + 1,	r1
+					ret
 
 handle:
 					invb	LED_PORT,	LED	; Инвертируем светодиод
-					;rcall	script
+					rcall	script
+					ldi	r18,	1
+					sts	play,	r18
 
 					cli
 
@@ -743,4 +847,22 @@ audio_stream:
 
 					lpm	r18,	Z+
 					out	OCR0A,	r18
+					ret
+
+.global clear_tcn
+clear_tcn:				cli
+					movw	ZL,	r24
+					clr	r16
+					st	Z+,	r16	        ; Обнуляем счетчик в ОЗУ
+					st	Z,	r16
+					sei				; Включаем прерывания
+					ret
+
+clear_ltcn:				cli
+					movw	ZL,	r24
+					clr	r16
+					st	Z+,	r16	        ; Обнуляем счетчик в ОЗУ
+					st	Z+,	r16	        ; Обнуляем счетчик в ОЗУ
+					st	Z,	r16
+					sei				; Включаем прерывания
 					ret
