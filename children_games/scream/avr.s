@@ -265,6 +265,7 @@ schd_exit_\@:									;   После того как все работы буд�
 .macro	game_action
 					eor	r1,	r1
 					out	SREG,	r1
+					sei
 					rcall	game_action_script
 .endm
 
@@ -395,13 +396,42 @@ TIMER1_CPT:				pushf
 					push	r17
 					push	r18
 					push	r19
-					push	r1
-					eor	r1,	r1
 
-					out	SREG,	r1
-					rcall	audio_routine
+					incm	CTCNT
+					incm	CTCNT2
 
-					pop	r1
+					lds	r18,	context
+					cpi	r18,	MOD_IDLE
+					brne	0f
+					lincm	CTCNT5
+					rjmp	context_end
+0:
+
+					lds	r18,	context
+					cpi	r18,	MOD_GAME
+					brne	0f
+					incm	CTCNT4
+					rjmp	context_end
+0:
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_START
+					brne	0f
+					lincm	CTCNT3
+					incm	CTCNT4
+					rjmp	context_end
+0:
+					lds	r18,	context
+					cpi	r18,	MOD_GAME_OVER
+					brne	0f
+					lincm	CTCNT7
+					incm	CTCNT4
+					rjmp	context_end
+0:
+
+context_end:
+					lincm	CTCNT6
+
+
 					pop r19
 					pop r18
 					pop r17
@@ -485,50 +515,7 @@ TIMER2_OVF:				pushf
 					popf
 					reti
 
-TIMER0_OVF:				pushf
-					push	r17
-					push	r18
-					push	r19
-
-					incm	CTCNT
-					incm	CTCNT2
-
-					lds	r18,	context
-					cpi	r18,	MOD_IDLE
-					brne	0f
-					lincm	CTCNT5
-					rjmp	context_end
-0:
-
-					lds	r18,	context
-					cpi	r18,	MOD_GAME
-					brne	0f
-					incm	CTCNT4
-					rjmp	context_end
-0:
-					lds	r18,	context
-					cpi	r18,	MOD_GAME_START
-					brne	0f
-					lincm	CTCNT3
-					incm	CTCNT4
-					rjmp	context_end
-0:
-					lds	r18,	context
-					cpi	r18,	MOD_GAME_OVER
-					brne	0f
-					lincm	CTCNT7
-					incm	CTCNT4
-					rjmp	context_end
-0:
-
-context_end:
-					lincm	CTCNT6
-
-
-					pop r19
-					pop r18
-					pop r17
-					popf
+TIMER0_OVF:
 					reti
 
 ; Подпрограммы инициализации -------------------------------------------------------------------------------
@@ -551,20 +538,21 @@ uart_init:				ldi 	r16,	lo8(bauddivider)	; Настраиваем бод реж�
 
 					ret
 
-timers_init:				setbi	TIMSK0,	TOIE0				; Включим прерывания переполнения таймера 0
-					outi	TCCR0B,	(1 << CS00) | (1 << CS02)	; Запускаем таймер. Предделитель = 1024
-
+timers_init:				;setbi	TIMSK0,	TOIE0				; Включим прерывания переполнения таймера 0
+					outi	TCCR0B,	(1 << CS00); | (1 << CS02)	; Запускаем таймер. Предделитель = 1024
+;
 					setbi	TIMSK2,	TOIE2				; Включим прерывания переполнения таймера 0
 					outi	TCCR2B,	(1 << CS21) | (1 << CS20); | (1 << CS22)	; Запускаем таймер. Предделитель = 1024
 
-		;			setbi	TIMSK1,	ICIE1				; Включим прерывания переполнения таймера 0
-		;			outi	TCCR1A,	0x00				; Отключим пвм от IO, выберем WGM на мод CTC
-		;			outi	TCCR1B,	(1 << WGM13) | (1 << WGM12) | (1 << CS10); | (1 << CS11)	; Запускаем таймер. Предделитель = 64
-					;outi	ICR1H,	0x2
-					;outi	ICR1L,	0x21				; при  делителе 64 совпадение раз в 100 миллисекунд (10 раз в секунду)
+					setbi	TIMSK1,	ICIE1				; Включим прерывания переполнения таймера 0
+					outi	TCCR1A,	0x00				; Отключим пвм от IO, выберем WGM на мод CTC
+					outi	TCCR1B,	(1 << WGM13) | (1 << WGM12) | (1 << CS10) | (1 << CS12)	; Запускаем таймер. Предделитель = 1024
+					outi	ICR1H,	0x0
+					outi	ICR1L,	0xFF				; при  делителе 64 совпадение раз в 100 миллисекунд (10 раз в секунду)
 
 					ret
 
+.global pwm_init
 pwm_init:
 					setbi	TCCR0A,	COM0A0
 					setbi	TCCR0A,	COM0A1
@@ -597,8 +585,8 @@ adc_init:
 
 					; ADEN: Set to turn on ADC , by default it is turned off
 					; ADPS2: ADPS2 and ADPS0 set to make division factor 32
-					outi	ADCSRA, (1 << ADEN)		;// | (1 << ADPS2) | (1 << ADPS0) | (1 <<  ADPS1);
-					outi	ADMUX,  (1 << REFS1) | (1 << REFS0) | (1 << MUX2) | (1 << MUX1); | (1 << MUX0)
+					outi	ADCSRA, (1 << ADEN) | (1 << ADPS2) | (1 << ADPS0) | (1 <<  ADPS1);
+					outi	ADMUX,  (1 << REFS1) | (1 << REFS0) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0)
 					; ADC7 selected & intnernal Vcc ref with external capacitor.
 
 					ret
@@ -837,7 +825,7 @@ handle:
 					clr	r16
 					sts	CTCNT,		r16	; Обнуляем счетчик в ОЗУ
 					sts	CTCNT + 1,	r16
-					sts	TCNT0,		r16	; Обнуляем счетчик таймера
+					;sts	TCNT0,		r16	; Обнуляем счетчик таймера
 					sei				; Включаем прерывания
 
 					ret
