@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include "screen.h"
+#include <avr/sleep.h>
 
 uint8_t buffer[48];
 uint16_t adc_val;
@@ -102,14 +103,19 @@ void script()
 void adc_update()
 {
 	//uart_str_send_P(PSTR("Hi there! What's up?\n\r"));
-	ADCSRA |= (1 << ADSC); // Start conversion
+	//ADCSRA |= (1 << ADSC); // Start conversion
 	while (ADCSRA & (1 << ADSC)); // wait for conversion to complete
 
+	ADMUX =  (1 << REFS0) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0);
+	sei();
+	sleep_mode();
+
 	adc_val = ADCW;
-	sprintf_P(buffer, PSTR("%u\n\r"), adc_val);
+	sprintf_P(buffer, PSTR("%" PRIu16 "\n\r"), adc_val);
 	uart_str_send(buffer);
-	adc_val *= 10;
-	//adc_val = (uint16_t) fmax(0, ((double) adc_val) - 600);
+	//adc_val = (uint16_t) fmax(0, (double) adc_val - 460);
+	//adc_val *= 10;
+	adc_val = (uint16_t) (fmax(0, ((double) adc_val) - 512));
 }
 
 void screen_set_game_params()

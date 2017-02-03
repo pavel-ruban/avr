@@ -16,10 +16,10 @@
 
 #define APP_PORT 36208
 
-#define CARD_A 7
-#define CARD_B 8
-#define CARD_C 9
-#define CARD_D 10
+#define CARD_A 6
+#define CARD_B 7
+#define CARD_C 8
+#define CARD_D 9
 
 // Protocol actions.
 #define OP_OPEN 1
@@ -49,7 +49,7 @@ void log_packet(int bytes)
 
 	if (!strncmp("card: ", buff, 6)) {
 		printf("%.6s", buff);
-		printf("%02X:%02X:%02X:%02X\n", buff[CARD_A] & 0xff, buff[CARD_B] & 0xff, buff[CARD_C] & 0xff, buff[CARD_D] & 0xff);
+		printf("%02X:%02X:%02X:%02X NODE:%02X\n", buff[CARD_A] & 0xff, buff[CARD_B] & 0xff, buff[CARD_C] & 0xff, buff[CARD_D] & 0xff, buff[CARD_D + 1] & 0xff);
 	}
 	else {
 		printf("%s\n",buff);
@@ -58,11 +58,11 @@ void log_packet(int bytes)
 	printf("-------------------------------------------------------\n");
 }
 
-int access_handler(uint8_t A, uint8_t B, uint8_t C, uint8_t D)
+int access_handler(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t NODE)
 {
 	char cmd[50];
 
-	sprintf(cmd, "somi.sh %02X:%02X:%02X:%02X", buff[CARD_A] & 0xff, buff[CARD_B] & 0xff, buff[CARD_C] & 0xff, buff[CARD_D] & 0xff);
+	sprintf(cmd, "somi.sh %02X:%02X:%02X:%02X %02X", A & 0xff, B & 0xff, C & 0xff, D & 0xff, NODE & 0xff);
 
 	FILE* pipe = popen(cmd, "r");
 
@@ -174,12 +174,13 @@ int main(int argc, char**argv)
 
 	while (1)
 	{
+		buff[CARD_D + 1] = 0;
 		bytes = recvfrom(sockfd, buff, 1000, 0, (struct sockaddr *) &cliaddr, &len);
 
 		log_packet(bytes);
 
 		if (!strncmp("card: ", buff, 6)) {
-			if (access_handler(buff[CARD_A], buff[CARD_B], buff[CARD_C], buff[CARD_D]))
+			if (access_handler(buff[CARD_A], buff[CARD_B], buff[CARD_C], buff[CARD_D], buff[CARD_D + 1]))
 			{
 				printf("popen failed to open SOMI manager\n");
 			}

@@ -150,12 +150,6 @@ void initial_delay()
 	_delay_ms(100);
 }
 
-void __data_start() {}
-void __data_load_start() {}
-void __data_end() {}
-void __bss_start() {}
-void __bss_end() {}
-
 uint16_t screen_number;
 uint16_t record;
 
@@ -254,6 +248,13 @@ void screen_upd_number(uint16_t number);
 
 void events_poll()
 {
+//	sr_out_on();
+//	_delay_ms(1000);
+//	sr_out_off();
+//	_delay_ms(1000);
+//	screen_upd_number(123);
+//
+//	return;
 	sr_in_upd();
 	int i = 0;
 

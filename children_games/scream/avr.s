@@ -585,9 +585,14 @@ adc_init:
 
 					; ADEN: Set to turn on ADC , by default it is turned off
 					; ADPS2: ADPS2 and ADPS0 set to make division factor 32
-					outi	ADCSRA, (1 << ADEN) | (1 << ADPS2) | (1 << ADPS0) | (1 <<  ADPS1);
-					outi	ADMUX,  (1 << REFS1) | (1 << REFS0) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0)
+					outi	ADCSRA, (1 << ADEN) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS0) | (1 <<  ADPS1);
+					outi	ADMUX,  (1 << REFS0) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0)
 					; ADC7 selected & intnernal Vcc ref with external capacitor.
+
+					outi	SMCR,	(1 << SM0)
+					lds	r18,	PRR
+					andi	r18,	~(1 << PRADC)
+					sts	PRR,	r18
 
 					ret
 

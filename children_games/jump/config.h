@@ -66,8 +66,8 @@
 
 #define	SR_SCREEN_S2_PORT		PORTD
 #define	SR_SCREEN_S2_DDR		DDRD
-#define	SR_SCREEN_S2			0
+#define	SR_SCREEN_S2			3
 
 #define	SR_SCREEN_S3_PORT		PORTD
 #define	SR_SCREEN_S3_DDR		DDRD
-#define	SR_SCREEN_S3			3
+#define	SR_SCREEN_S3			0

@@ -201,12 +201,6 @@ volatile unsigned int bytesPerSector, sectorPerCluster, reservedSectorCount;
 unsigned char buffer[48];
 uint8_t track[16];
 
-void __data_start() {}
-void __data_load_start() {}
-void __data_end() {}
-void __bss_start() {}
-void __bss_end() {}
-
 uint16_t screen_lb_number;
 uint16_t screen_lt_number;
 uint16_t screen_rb_number;
@@ -1112,6 +1106,7 @@ void screen_select_digit(uint8_t digit)
 void screen_render()
 {
 	SCREEN_CLR_SELECT;
+	sr_screen_upd();
 
 	if (screen_current_digit > 11) screen_current_digit = 0;
 	screen_select_digit(screen_current_digit);
